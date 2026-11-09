@@ -1,0 +1,26 @@
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# .NET build files
+**/bin/
+**/obj/
+
+# Frontend dependencies
+**/node_modules/
+
+# Frontend build
+**/dist/
+
+# Logs
+*.log
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
