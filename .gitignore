@@ -1,6 +1,4 @@
 # Environment variables and secrets
-.env
-.env.*
 !.env.example
 
 
@@ -24,10 +22,10 @@ frontend/.env.*
 !frontend/.env.example
 
 # IDE files
-.vscode/
 .idea/
 
 # OS files
 .DS_Store
 Thumbs.db
 
+config.bat
