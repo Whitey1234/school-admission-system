@@ -3,6 +3,8 @@
 .env.*
 !.env.example
 
+
+
 # .NET build files
 **/bin/
 **/obj/
@@ -15,6 +17,11 @@
 
 # Logs
 *.log
+
+#frontend 
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
 
 # IDE files
 .vscode/
