@@ -5,9 +5,10 @@ interface Props {
   schoolClass: SchoolClass;
   onApply: (classId: string) => void;
   loading: boolean;
+  hasValidStudentId: boolean;
 }
 
-export default function ClassCard({ schoolClass, onApply, loading }: Props) {
+export default function ClassCard({ schoolClass, onApply, loading, hasValidStudentId }: Props) {
   const isFull = schoolClass.availableSeats <= 0;
   const occupiedSeats = schoolClass.totalSeats - schoolClass.availableSeats;
   const occupiedPercentage = schoolClass.totalSeats > 0
@@ -78,11 +79,11 @@ export default function ClassCard({ schoolClass, onApply, loading }: Props) {
 
       <button
         onClick={() => onApply(schoolClass.id)}
-        disabled={isFull || loading}
+        disabled={isFull || loading || !hasValidStudentId}
         className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:bg-slate-300"
       >
         {loading && <Loader2 size={17} className="animate-spin" />}
-        {loading ? "Applying..." : isFull ? "Seats Full" : <>Apply for Admission <ArrowUpRight size={16} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" /></>}
+        {loading ? "Applying..." : isFull ? "Seats Full" : !hasValidStudentId ? "Enter a valid BRN" : <>Apply for Admission <ArrowUpRight size={16} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" /></>}
       </button>
     </article>
   );

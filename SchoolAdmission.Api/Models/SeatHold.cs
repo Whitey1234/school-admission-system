@@ -4,7 +4,7 @@ public class SeatHold
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    public Guid StudentId { get; set; }
+    public string StudentId { get; set; } = string.Empty;
 
     public Student Student { get; set; } = null!;
 

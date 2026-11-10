@@ -32,6 +32,14 @@ public class AppDbContext : DbContext
 
         // Student 
         modelBuilder.Entity<Student>()
+            .HasKey(s => s.Id);
+
+        modelBuilder.Entity<Student>()
+            .Property(s => s.Id)
+            .HasMaxLength(36)
+            .ValueGeneratedNever();
+
+        modelBuilder.Entity<Student>()
             .HasIndex(s => s.Email)
             .IsUnique();
 
@@ -40,6 +48,10 @@ public class AppDbContext : DbContext
             .HasOne(h => h.Student)
             .WithMany()
             .HasForeignKey(h => h.StudentId);
+
+        modelBuilder.Entity<SeatHold>()
+            .Property(h => h.StudentId)
+            .HasMaxLength(36);
 
         // SeatHold - Sip
         modelBuilder.Entity<SeatHold>()

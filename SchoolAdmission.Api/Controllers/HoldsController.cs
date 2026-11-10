@@ -1,4 +1,7 @@
 
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SchoolAdmission.Api.Data;
@@ -31,27 +34,33 @@ public class HoldsController : ControllerBase
 
     private bool TryGetStudentId(
         string? header,
-        out Guid studentId)
+        out string studentId)
     {
-        return Guid.TryParse(header, out studentId);
+        studentId = header ?? string.Empty;
+        return Regex.IsMatch(studentId, @"\A[0-9]{17}\z", RegexOptions.CultureInvariant);
     }
 
     
-private async Task EnsureStudentExists(Guid studentId)
-{
-    await _context.Database.ExecuteSqlInterpolatedAsync(
-        $"""
-        INSERT INTO "Students" ("Id", "Name", "Email", "Phone")
-        VALUES (
-            {studentId},
-            {$"Student {studentId}"},
-            {$"{studentId}@students.local"},
-            {string.Empty}
-        )
-        ON CONFLICT ("Id") DO NOTHING;
-        """
-    );
-}
+    private async Task EnsureStudentExists(string studentId)
+    {
+        var hash = Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(studentId))
+        ).ToLowerInvariant();
+        var email = $"student-{hash}@students.local";
+
+        await _context.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO "Students" ("Id", "Name", "Email", "Phone")
+            VALUES (
+                {studentId},
+                {"Student"},
+                {email},
+                {string.Empty}
+            )
+            ON CONFLICT ("Id") DO NOTHING;
+            """
+        );
+    }
 
 
     // POST /classes/{classId}/holds
@@ -64,7 +73,7 @@ private async Task EnsureStudentExists(Guid studentId)
         {
             return BadRequest(new
             {
-                message = "A valid X-Student-Id header is required."
+                message = "X-Student-Id must contain exactly 17 digits."
             });
         }
 
@@ -153,7 +162,6 @@ private async Task EnsureStudentExists(Guid studentId)
             {
                 holdId = hold.Id,
                 classId = hold.ClassId,
-                studentId = hold.StudentId,
                 status = hold.Status.ToString(),
                 expiresAt = hold.ExpiresAt
             }
@@ -181,7 +189,6 @@ private async Task EnsureStudentExists(Guid studentId)
         return Ok(new
         {
             holdId = hold.Id,
-            studentId = hold.StudentId,
             classId = hold.ClassId,
             className = hold.SchoolClass.Name,
             status = hold.Status.ToString(),
@@ -200,7 +207,7 @@ private async Task EnsureStudentExists(Guid studentId)
         {
             return BadRequest(new
             {
-                message = "A valid X-Student-Id header is required."
+                message = "X-Student-Id must contain exactly 17 digits."
             });
         }
 
@@ -280,7 +287,7 @@ private async Task EnsureStudentExists(Guid studentId)
         {
             return BadRequest(new
             {
-                message = "A valid X-Student-Id header is required."
+                message = "X-Student-Id must contain exactly 17 digits."
             });
         }
 
@@ -335,7 +342,7 @@ private async Task EnsureStudentExists(Guid studentId)
         {
             return BadRequest(new
             {
-                message = "A valid X-Student-Id header is required."
+                message = "X-Student-Id must contain exactly 17 digits."
             });
         }
 

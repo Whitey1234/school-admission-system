@@ -2,7 +2,7 @@ namespace SchoolAdmission.Api.Models;
 
 public class Student
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Id { get; set; } = string.Empty;
 
     public string Name { get; set; } = string.Empty;
 
@@ -10,4 +10,3 @@ public class Student
 
     public string Phone { get; set; } = string.Empty;
 }
-

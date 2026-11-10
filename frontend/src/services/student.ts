@@ -1,23 +1,26 @@
-const STUDENT_KEY = "admission_student_id";
+const STUDENT_KEY = "admission_birth_registration_number";
+const LEGACY_STUDENT_KEY = "admission_student_id";
 
-export function getStudentId(): string {
-  let id = localStorage.getItem(STUDENT_KEY);
+export function isValidBirthRegistrationNumber(value: string): boolean {
+  return /^[0-9]{17}$/.test(value);
+}
 
-  if (!id) {
-    id = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
-      /[xy]/g,
-      (character) => {
-        const random = Math.floor(Math.random() * 16);
+export function getBirthRegistrationNumber(): string {
+  localStorage.removeItem(LEGACY_STUDENT_KEY);
 
-        const value =
-          character === "x" ? random : (random & 0x3) | 0x8;
-
-        return value.toString(16);
-      }
-    );
-
-    localStorage.setItem(STUDENT_KEY, id);
+  const value = localStorage.getItem(STUDENT_KEY) ?? "";
+  if (isValidBirthRegistrationNumber(value)) {
+    return value;
   }
 
-  return id;
+  localStorage.removeItem(STUDENT_KEY);
+  return "";
+}
+
+export function saveBirthRegistrationNumber(value: string): void {
+  if (isValidBirthRegistrationNumber(value)) {
+    localStorage.setItem(STUDENT_KEY, value);
+  } else {
+    localStorage.removeItem(STUDENT_KEY);
+  }
 }

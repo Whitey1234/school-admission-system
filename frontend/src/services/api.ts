@@ -12,8 +12,24 @@ const api = axios.create({
 
 export function getApiError(error: unknown): string {
   if (axios.isAxiosError(error)) {
-    if (error.response?.data?.message) {
-      return error.response.data.message;
+    const data: unknown = error.response?.data;
+    if (typeof data === "object" && data !== null) {
+      if ("message" in data && typeof data.message === "string") {
+        return data.message;
+      }
+
+      if ("title" in data && typeof data.title === "string") {
+        return data.title;
+      }
+
+      if ("errors" in data && typeof data.errors === "object" && data.errors !== null) {
+        const messages = Object.values(data.errors)
+          .flatMap((value) => Array.isArray(value) ? value : [])
+          .filter((value): value is string => typeof value === "string");
+        if (messages.length > 0) {
+          return messages.join(" ");
+        }
+      }
     }
 
     if (error.code === "ECONNABORTED") {

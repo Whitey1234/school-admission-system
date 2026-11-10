@@ -12,11 +12,16 @@ import {
 import api, { getApiError } from "../services/api";
 import ClassCard from "../components/ClassCard";
 import type { SchoolClass } from "../types";
-import { getStudentId } from "../services/student";
+import { useStudentIdentity } from "../context/StudentIdentityContext";
+import { isValidBirthRegistrationNumber } from "../services/student";
 
 export default function Dashboard() {
     const [classes, setClasses] = useState<SchoolClass[]>([]);
-    const [studentId] = useState<string>(() => getStudentId());
+    const {
+        birthRegistrationNumber,
+        isValid: hasValidStudentId,
+        setBirthRegistrationNumber,
+    } = useStudentIdentity();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [applyingId, setApplyingId] = useState<string | null>(null);
@@ -87,6 +92,12 @@ export default function Dashboard() {
     };
 
     const handleApply = async (classId: string) => {
+        const studentId = birthRegistrationNumber;
+        if (!isValidBirthRegistrationNumber(studentId)) {
+            setError("Enter a valid 17-digit Birth Registration Number before applying.");
+            return;
+        }
+
         setApplyingId(classId);
         setError("");
         setMessage("");
@@ -98,11 +109,8 @@ export default function Dashboard() {
 
             setMessage("Your seat has been held successfully!");
             await fetchClasses();
-        } catch (err: any) {
-            setError(
-                err.response?.data?.message ||
-                "Could not create your application. Please try again."
-            );
+        } catch (err) {
+            setError(getApiError(err));
         } finally {
             setApplyingId(null);
         }
@@ -140,9 +148,6 @@ export default function Dashboard() {
                         <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
                         {refreshing ? "Refreshing..." : "Refresh"}
                     </button>
-                    <p className="max-w-full break-all text-xs text-slate-500 sm:text-right">
-                        Student ID: <span className="font-medium text-slate-700">{studentId}</span>
-                    </p>
                 </div>
             </section>
 
@@ -228,6 +233,44 @@ export default function Dashboard() {
                 </form>
             </section>
 
+            <section className="mb-8 rounded-2xl border border-indigo-100 bg-white p-5 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.35)] sm:p-6">
+                <h2 className="mb-3 text-lg font-bold tracking-tight text-slate-900">
+                    Enter NID for Apply
+                </h2>
+                <label htmlFor="birth-registration-number" className="block text-sm font-semibold text-slate-800">
+                    Birth Registration Number (17 Digits)
+                </label>
+                <input
+                    id="birth-registration-number"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    required
+                    maxLength={17}
+                    pattern="[0-9]{17}"
+                    value={birthRegistrationNumber}
+                    onChange={(event) => setBirthRegistrationNumber(event.target.value.replace(/[^0-9]/g, "").slice(0, 17))}
+                    aria-invalid={!hasValidStudentId}
+                    aria-describedby="brn-help brn-validation"
+                    placeholder="Enter your 17-digit Birth Registration Number"
+                    className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 sm:max-w-xl"
+                />
+                <p id="brn-help" className="mt-2 text-sm text-slate-500">
+                    Your Birth Registration Number will be used as your student identity for admission applications.
+                </p>
+                <p
+                    id="brn-validation"
+                    role={birthRegistrationNumber.length > 0 && !hasValidStudentId ? "alert" : "status"}
+                    className={`mt-1 text-sm ${hasValidStudentId ? "text-emerald-700" : "text-amber-700"}`}
+                >
+                    {hasValidStudentId
+                        ? "Valid 17-digit number."
+                        : birthRegistrationNumber.length > 0
+                            ? "Enter exactly 17 numeric digits."
+                            : "Enter a valid 17-digit number to apply for admission."}
+                </p>
+            </section>
+
             <section>
                 <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
                     <div>
@@ -258,6 +301,7 @@ export default function Dashboard() {
                                 schoolClass={schoolClass}
                                 onApply={handleApply}
                                 loading={applyingId === schoolClass.id}
+                                hasValidStudentId={hasValidStudentId}
                             />
                         ))}
                     </div>

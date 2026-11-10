@@ -62,8 +62,10 @@ namespace SchoolAdmission.Api.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("StudentId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("StudentId")
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("character varying(36)");
 
                     b.HasKey("Id");
 
@@ -76,9 +78,9 @@ namespace SchoolAdmission.Api.Migrations
 
             modelBuilder.Entity("SchoolAdmission.Api.Models.Student", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                    b.Property<string>("Id")
+                        .HasMaxLength(36)
+                        .HasColumnType("character varying(36)");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -103,7 +105,7 @@ namespace SchoolAdmission.Api.Migrations
             modelBuilder.Entity("SchoolAdmission.Api.Models.SeatHold", b =>
                 {
                     b.HasOne("SchoolAdmission.Api.Models.SchoolClass", "SchoolClass")
-                        .WithMany()
+                        .WithMany("Holds")
                         .HasForeignKey("ClassId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -117,6 +119,11 @@ namespace SchoolAdmission.Api.Migrations
                     b.Navigation("SchoolClass");
 
                     b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("SchoolAdmission.Api.Models.SchoolClass", b =>
+                {
+                    b.Navigation("Holds");
                 });
 #pragma warning restore 612, 618
         }

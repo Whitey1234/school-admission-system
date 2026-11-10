@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   CheckCircle,
@@ -8,10 +8,10 @@ import {
   RefreshCw,
   XCircle,
 } from "lucide-react";
-import api from "../services/api";
+import api, { getApiError } from "../services/api";
 import StatusBadge from "../components/StatusBadge";
 import type { StudentHold } from "../types";
-import { getStudentId } from "../services/student";
+import { useStudentIdentity } from "../context/StudentIdentityContext";
 
 
 function getRemainingTime(expiresAt: string) {
@@ -34,31 +34,46 @@ export default function MyApplications() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [, setTick] = useState(0);
+  const [holdsStudentId, setHoldsStudentId] = useState("");
+  const holdsStudentIdRef = useRef("");
+  const currentStudentIdRef = useRef("");
 
-
-
-const studentId = getStudentId();
+  const {
+    birthRegistrationNumber: studentId,
+    isValid: hasValidStudentId,
+  } = useStudentIdentity();
 
   const fetchHolds = useCallback(async () => {
-    if (!studentId) {
-      setHolds([]);
-      setLoading(false);
+    if (!hasValidStudentId) {
       return;
     }
 
+    const requestedStudentId = studentId;
     try {
       const response = await api.get<StudentHold[]>("/me/holds", {
-        headers: { "X-Student-Id": studentId },
+        headers: { "X-Student-Id": requestedStudentId },
       });
 
+      if (currentStudentIdRef.current !== requestedStudentId) return;
       setHolds(response.data);
+      holdsStudentIdRef.current = requestedStudentId;
+      setHoldsStudentId(requestedStudentId);
       setError("");
     } catch {
-      setError("Unable to load your applications.");
+      if (currentStudentIdRef.current === requestedStudentId) {
+        setError("Unable to load your applications.");
+        if (holdsStudentIdRef.current !== requestedStudentId) {
+          setHolds([]);
+          holdsStudentIdRef.current = requestedStudentId;
+          setHoldsStudentId(requestedStudentId);
+        }
+      }
     } finally {
-      setLoading(false);
+      if (currentStudentIdRef.current === requestedStudentId) {
+        setLoading(false);
+      }
     }
-  }, [studentId]);
+  }, [hasValidStudentId, studentId]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -70,7 +85,10 @@ const studentId = getStudentId();
   };
 
   useEffect(() => {
-    void fetchHolds();
+    currentStudentIdRef.current = studentId;
+    const initialFetchTimer = window.setTimeout(() => {
+      void fetchHolds();
+    }, 0);
 
     const refreshTimer = window.setInterval(() => {
       void fetchHolds();
@@ -81,16 +99,17 @@ const studentId = getStudentId();
     }, 1000);
 
     return () => {
+      window.clearTimeout(initialFetchTimer);
       window.clearInterval(refreshTimer);
       window.clearInterval(clockTimer);
     };
-  }, [fetchHolds]);
+  }, [fetchHolds, studentId]);
 
   const handleAction = async (
     holdId: string,
     action: "confirm" | "cancel"
   ) => {
-    if (!studentId) return;
+    if (!hasValidStudentId) return;
 
     if (
       action === "cancel" &&
@@ -108,24 +127,49 @@ const studentId = getStudentId();
 
       if (action === "confirm") {
         await api.post(`/holds/${holdId}/confirm`, {}, config);
+        if (currentStudentIdRef.current !== studentId) return;
         setMessage("Admission confirmed successfully!");
       } else {
         await api.delete(`/holds/${holdId}`, config);
+        if (currentStudentIdRef.current !== studentId) return;
         setMessage("Application cancelled successfully.");
       }
 
       await fetchHolds();
-    } catch (err: any) {
-      setError(
-        err.response?.data?.message || "Action failed. Please try again."
-      );
-      await fetchHolds();
+    } catch (err) {
+      if (currentStudentIdRef.current === studentId) {
+        setError(getApiError(err));
+        await fetchHolds();
+      }
     } finally {
       setActionId(null);
     }
   };
 
-  if (loading) {
+  if (!hasValidStudentId) {
+    return (
+      <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-10">
+        <div className="mb-7">
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-indigo-700">Admissions</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">My Applications</h1>
+          <p className="mt-2 text-sm text-slate-600 sm:text-base">
+            View and manage your admission applications.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-16 text-center">
+          <span className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+            <Clock size={23} />
+          </span>
+          <h2 className="font-semibold text-slate-900">Birth Registration Number required</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Enter a valid 17-digit Birth Registration Number on the dashboard to view your applications.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (loading || holdsStudentId !== studentId) {
     return (
       <main className="mx-auto flex min-h-[60vh] w-full max-w-5xl flex-col items-center justify-center px-5 text-slate-500">
         <Loader2 size={26} className="mb-3 animate-spin text-indigo-600" />
@@ -170,7 +214,7 @@ const studentId = getStudentId();
         </div>
       )}
 
-      {holds.length === 0 ? (
+      {holdsStudentId === studentId && holds.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-16 text-center">
           <span className="mx-auto mb-4 flex size-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
             <Clock size={23} />
@@ -182,7 +226,7 @@ const studentId = getStudentId();
         </div>
       ) : (
         <div className="space-y-4">
-          {holds.map((hold) => {
+          {holdsStudentId === studentId && holds.map((hold) => {
             const remaining = getRemainingTime(hold.expiresAt);
             const expiredByClock = hold.status === "HELD" && remaining === "0:00";
 
@@ -239,7 +283,7 @@ const studentId = getStudentId();
                         className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-50"
                       >
                         {actionId === hold.holdId ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-                        {actionId === hold.holdId ? "Processing..." : "Confirm Admission"}
+                        {actionId === hold.holdId ? "Processing..." : "ভর্তি ফি দিন"}
                       </button>
 
                       <button
